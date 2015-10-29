@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="DLL">
+      <UniqueIdentifier>{6f6f8003-c3ec-455b-a846-ac5c2dcc3c15}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="dsp">
+      <UniqueIdentifier>{3aba6be1-a834-4c29-8e6c-b3233366fa19}</UniqueIdentifier>
+      <Extensions>
+      </Extensions>
+    </Filter>
+    <Filter Include="plug-in">
+      <UniqueIdentifier>{f30421f2-af62-4648-b72b-921ffe1f898d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="c++dsp.resource\c++dsp.resource.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\dsp_containers.h">
+      <Filter>dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dsp_file.h">
+      <Filter>dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="src\dsp_transpose.h">
+      <Filter>dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="src\configure.h">
+      <Filter>dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="src\int24_t.h">
+      <Filter>dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="src\machine.h">
+      <Filter>dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sample.h">
+      <Filter>dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sample_traits.h">
+      <Filter>dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="src\bstream.h">
+      <Filter>plug-in</Filter>
+    </ClInclude>
+    <ClInclude Include="src\audio_file.h">
+      <Filter>plug-in</Filter>
+    </ClInclude>
+    <ClInclude Include="src\plugin_interface.h">
+      <Filter>plug-in</Filter>
+    </ClInclude>
+    <ClInclude Include="src\plugin_logging.h">
+      <Filter>plug-in</Filter>
+    </ClInclude>
+    <ClInclude Include="src\split-combine.h">
+      <Filter>DLL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cpp-dsp.h">
+      <Filter>DLL</Filter>
+    </ClInclude>
+    <ClInclude Include="dsp_image.h">
+      <Filter>dsp</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\audio_file.cpp">
+      <Filter>plug-in</Filter>
+    </ClCompile>
+    <ClCompile Include="src\split-combine.cpp">
+      <Filter>DLL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cpp-dsp.cpp">
+      <Filter>DLL</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
