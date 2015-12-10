@@ -35,8 +35,8 @@ namespace dsp
 		{
 		public:
 			std::sys::path	path;
-			dsp::dspfile	file;
 			dsp::dspformat	format;
+			dsp::dspfile	file;
 			file_description() {}
 			file_description(const char *_name) : path(_name) {}
 			file_description(std::sys::path &_path) : path(_path) {}
@@ -63,8 +63,23 @@ namespace dsp
 		// Clear inputs and outputs and reset the entire class.
 		bool clear();
 
-		// This function sets 'channels' to the number of channels detected in the input file.
-		bool add_input(const char *name, int &channels);
+		// ********************************
+		// **** This function adds an input file and returns data about the file.
+		bool dsp_split_combine::add_input_ex(
+			const char *name,			// Path to and name of file.
+			int &Channels,				// Total number of channels.
+			int &SampleSize,			// Bits per sample.
+			int &FrameSize,				// Size of a single frame of audio (Channels * BytesPerSample).
+			int &SampleRate,			// Sample rate.
+			int &Float,					// True or false. Changed to Float from mFormat.
+			int &ByteOrder,				// Endianness.
+			int &dataOffset,			// File offset of sample data.
+			unsigned long &dataSize,	// Size of sample data in bytes
+			int &HasBWF,				// 0 for no BWF and 1 for has BWF.
+			int &MediaType,				// 1 = wav, 2 = aif;
+			SF_BROADCAST_INFO &bext
+		);
+		bool add_input(const char *name, int &channels);					// This function adds an input file and sets 'channels' to the number detected in the input file.
 		bool add_output_path(std::sys::path &path, int fmtcodec, int rate);	// Add full path and file name using filesystem>path.
 		bool add_output(const char *name, int fmtcodec, int rate);			// Add full path and file name using a C string.
 
@@ -73,13 +88,13 @@ namespace dsp
 		template <typename _Type>
 		unsigned int get_buffer_length();
 
-		template <typename _Type>
+		template <typename _TypeSrc, typename _TypeDst>
 		void split_template();
 
-		template <typename _Type>
+		template <typename _TypeSrc, typename _TypeDst>
 		void combine_template();
 
-		template <typename _Type>
+		template <typename _TypeSrc, typename _TypeDst>
 		void convert_template(int index);
 
 		// Modifies a path to add " (chX)" into the name.

@@ -650,9 +650,9 @@ namespace dsp
 	public:
 		dspformat(
 			uint64_t	_frames = 0,
-			int			_rate = 44100,
-			int			_channels = 2,
-			int			_bits = 16,
+			int			_rate = 0,
+			int			_channels = 0,
+			int			_bits = 0,
 			bool		_floating_point = false,
 			bool		_interleaved = true) :
 			frames(_frames),
@@ -666,7 +666,7 @@ namespace dsp
 		};
 		~dspformat() {};
 
-		inline void set_frames(size_t _frames)			{ frames = _frames; }
+		inline void set_frames(uint64_t _frames)		{ frames = _frames; }
 		inline void set_rate(int _rate)					{ rate = _rate; }
 		inline void set_channels(int num)				{ num_channels = num; construct_channels(); }
 		inline void set_bits(int _bits)					{ bits = _bits; }

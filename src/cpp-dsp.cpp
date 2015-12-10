@@ -70,7 +70,7 @@ CPP_DSP_API_VB int VBCALL dsp_sc_(DSPPTR _this)
 	// **** dsp_sc_start - To allocate a special split/combine processor.
 	int VBCALL dsp_sc_interface::start(DSPPTR &_this)
 	{
-		#pragma EXPORT_ALIASX(dsp_sc_start)
+//		#pragma EXPORT_ALIASX(dsp_sc_start)
 		dsp::dsp_split_combine *ret = new dsp::dsp_split_combine;
 		_this = ((DSPPTR)ret);
 		return (ret != nullptr) ? DSP_OK : DSP_ERROR;
@@ -82,7 +82,7 @@ CPP_DSP_API_VB int VBCALL dsp_sc_(DSPPTR _this)
 	// **** dsp_sc_end - Destroy the information assigned to the split/combine processor.
 	int VBCALL dsp_sc_interface::end(DSPPTR &_this)
 	{
-		#pragma EXPORT_ALIASX(dsp_sc_end)
+//		#pragma EXPORT_ALIASX(dsp_sc_end)
 		dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
 		if (_this)
 		{
@@ -99,7 +99,7 @@ CPP_DSP_API_VB int VBCALL dsp_sc_(DSPPTR _this)
 	// **** dsp_sc_clear - clear all input and output files to begin adding more.
 	int VBCALL dsp_sc_interface::clear(DSPPTR _this)
 	{
-		#pragma EXPORT_ALIASX(dsp_sc_clear)
+//		#pragma EXPORT_ALIASX(dsp_sc_clear)
 		bool ret = true;
 		dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
 		ret = sc_this->clear();
@@ -110,9 +110,49 @@ CPP_DSP_API_VB int VBCALL dsp_sc_(DSPPTR _this)
 
 	// ********************************
 	// **** dsp_sc_add_input - add an input file to the input list.
+	int VBCALL dsp_sc_interface::add_input_ex(
+		DSPPTR _this,
+		const char *name,			// Path to and name of file.
+		int &Channels,				// Total number of channels.
+		int &SampleSize,			// Bits per sample.
+		int &FrameSize,				// Size of a single frame of audio (Channels * BytesPerSample).
+		int &SampleRate,			// Sample rate.
+		int &Float,					// True or false.
+		int &ByteOrder,				// Endianness.
+		int &dataOffset,			// File offset of sample data
+		unsigned long &dataSize,	// Size of sample data in bytes
+		int &HasBWF,				// 0 for no BWF and 1 for has BWF
+		int &MediaType,				// 1 = wav, 2 = aif;
+		SF_BROADCAST_INFO &bext
+	)
+	{
+//		#pragma EXPORT_ALIASX(dsp_sc_add_input_ex)
+		bool ret = true;
+		dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
+		ret = sc_this->add_input_ex(
+			name,		// Path to and name of file.
+			Channels,	// Total number of channels.
+			SampleSize,	// Bits per sample.
+			FrameSize,	// Size of a single frame of audio (Channels * BytesPerSample).
+			SampleRate,	// Sample rate.
+			Float,		// True or false. Changed to Float from mFormat.
+			ByteOrder,	// Endianness.
+			dataOffset,	// File offset of sample data
+			dataSize,	// Size of sample data in bytes
+			HasBWF,		// 0 for no BWF and 1 for has BWF
+			MediaType,	// 1 = wav, 2 = aif;
+			bext
+		);
+		return (ret) ? DSP_OK : DSP_ERROR;
+	}
+	// ********************************
+
+
+	// ********************************
+	// **** dsp_sc_add_input - add an input file to the input list.
 	int VBCALL dsp_sc_interface::add_input(DSPPTR _this, const char *name, int &channels)
 	{
-		#pragma EXPORT_ALIASX(dsp_sc_add_input)
+//		#pragma EXPORT_ALIASX(dsp_sc_add_input)
 		bool ret = true;
 		dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
 		ret = sc_this->add_input(name, channels);
@@ -125,7 +165,7 @@ CPP_DSP_API_VB int VBCALL dsp_sc_(DSPPTR _this)
 	// **** dsp_sc_add_output - add an output file to the output list.
 	int VBCALL dsp_sc_interface::add_output(DSPPTR _this, const char *name, int fmtcodec, int rate)
 	{
-		#pragma EXPORT_ALIASX(dsp_sc_add_output)
+//		#pragma EXPORT_ALIASX(dsp_sc_add_output)
 		bool ret = true;
 		dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
 		ret = sc_this->add_output(name, fmtcodec, rate);
@@ -139,7 +179,7 @@ CPP_DSP_API_VB int VBCALL dsp_sc_(DSPPTR _this)
 	// **** with the contents of the error string.
 	int VBCALL dsp_sc_interface::get_error(DSPPTR _this, char *buf, int size)
 	{
-		#pragma EXPORT_ALIASX(dsp_sc_get_error)
+//		#pragma EXPORT_ALIASX(dsp_sc_get_error)
 		dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
 
 		const char *tmp = sc_this->get_error_str();
@@ -157,7 +197,7 @@ CPP_DSP_API_VB int VBCALL dsp_sc_(DSPPTR _this)
 	// **** dsp_sc_do_split
 	int VBCALL dsp_sc_interface::do_split(DSPPTR _this)
 	{
-		#pragma EXPORT_ALIASX(dsp_sc_do_split)
+//		#pragma EXPORT_ALIASX(dsp_sc_do_split)
 		bool ret = true;
 		dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
 		ret = sc_this->do_split();
@@ -170,7 +210,7 @@ CPP_DSP_API_VB int VBCALL dsp_sc_(DSPPTR _this)
 	// **** dsp_sc_do_combine
 	int VBCALL dsp_sc_interface::do_combine(DSPPTR _this)
 	{
-		#pragma EXPORT_ALIASX(dsp_sc_do_combine)
+//		#pragma EXPORT_ALIASX(dsp_sc_do_combine)
 		bool ret = true;
 		dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
 		ret = sc_this->do_combine();
@@ -183,7 +223,7 @@ CPP_DSP_API_VB int VBCALL dsp_sc_(DSPPTR _this)
 	// **** dsp_sc_do_convert
 	int VBCALL dsp_sc_interface::do_convert(DSPPTR _this)
 	{
-		#pragma EXPORT_ALIASX(dsp_sc_do_convert)
+//		#pragma EXPORT_ALIASX(dsp_sc_do_convert)
 		bool ret = true;
 		dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
 		ret = sc_this->do_convert();
@@ -198,7 +238,7 @@ CPP_DSP_API dsp_sc_interface sc_interface;
 // ********************************
 
 
-#if 0
+#if 1
 // ********************************
 // **** dsp_sc_start - To allocate a special split/combine processor.
 CPP_DSP_API_VB int VBCALL dsp_sc_start(DSPPTR &_this)
@@ -224,6 +264,59 @@ CPP_DSP_API_VB int VBCALL dsp_sc_end(DSPPTR &_this)
 		return DSP_OK;
 	}
 	return DSP_ERROR;
+}
+// ********************************
+
+
+// ********************************
+// **** dsp_sc_clear - To allocate a special split/combine processor.
+CPP_DSP_API_VB int VBCALL dsp_sc_clear(DSPPTR &_this)
+{
+#pragma EXPORT_ALIAS
+	bool ret = true;
+	dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
+	ret = sc_this->clear();
+	return (ret) ? DSP_OK : DSP_ERROR;
+}
+// ********************************
+
+
+// ********************************
+// **** dsp_sc_add_input - add an input file to the input list.
+CPP_DSP_API_VB int VBCALL dsp_sc_add_input_ex(
+	DSPPTR _this,
+	const char *name,			// Path to and name of file.
+	int &Channels,				// Total number of channels.
+	int &SampleSize,			// Bits per sample.
+	int &FrameSize,				// Size of a single frame of audio (Channels * BytesPerSample).
+	int &SampleRate,			// Sample rate.
+	int &Float,					// True or false. Changed to Float from mFormat.
+	int &ByteOrder,				// Endianness.
+	int &dataOffset,			// File offset of sample data
+	unsigned long &dataSize,	// Size of sample data in bytes
+	int &HasBWF,				// 0 for no BWF and 1 for has BWF
+	int &MediaType,				// 1 = wav, 2 = aif;
+	SF_BROADCAST_INFO &bext
+)
+{
+#pragma EXPORT_ALIAS
+	bool ret = true;
+	dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
+	ret = sc_this->add_input_ex(
+		name,		// Path to and name of file.
+		Channels,	// Total number of channels.
+		SampleSize,	// Bits per sample.
+		FrameSize,	// Size of a single frame of audio (Channels * BytesPerSample).
+		SampleRate,	// Sample rate.
+		Float,		// Changed to Float from mFormat,// ???
+		ByteOrder,	// Endianness.
+		dataOffset,	// File offset of sample data
+		dataSize,	// Size of sample data in bytes
+		HasBWF,		// 0 for no BWF and 1 for has BWF
+		MediaType,	// 1 = wav, 2 = aif;
+		bext
+	);
+	return (ret) ? DSP_OK : DSP_ERROR;
 }
 // ********************************
 
@@ -294,6 +387,19 @@ CPP_DSP_API_VB int VBCALL dsp_sc_do_split(DSPPTR _this)
 	bool ret = true;
 	dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
 	ret = sc_this->do_split();
+	return (ret) ? DSP_OK : DSP_ERROR;
+}
+// ********************************
+
+
+// ********************************
+// **** dsp_sc_do_convert
+CPP_DSP_API_VB int VBCALL dsp_sc_do_convert(DSPPTR _this)
+{
+#pragma EXPORT_ALIAS
+	bool ret = true;
+	dsp::dsp_split_combine *sc_this = (dsp::dsp_split_combine *)_this;
+	ret = sc_this->do_convert();
 	return (ret) ? DSP_OK : DSP_ERROR;
 }
 // ********************************

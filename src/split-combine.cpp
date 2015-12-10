@@ -9,6 +9,17 @@
 
 #include "split-combine.h"
 
+ 
+ // ********************************
+ // **** Import functions from sf_private
+extern "C" {
+	long long sfp_get_dataoffset(SNDFILE *sf);
+	long long sfp_get_datalength(SNDFILE *sf);
+	long long sfp_get_dataend(SNDFILE *sf);
+}
+// ********************************
+
+
 #if 0//_MSC_VER >= 1900
 	#define regular_file std::tr2::sys::file_type::regular
 #else
@@ -41,8 +52,21 @@ namespace dsp
 
 
 	// ********************************
-	// **** This function sets 'channels' to the number of channels detected in the input file.
-	bool dsp_split_combine::add_input(const char *name, int &channels)
+	// **** This function adds an input file and returns data about the file.
+	bool dsp_split_combine::add_input_ex(
+		const char *name,			// Path to and name of file.
+		int &Channels,				// Total number of channels.
+		int &SampleSize,			// Bits per sample.
+		int &FrameSize,				// Size of a single frame of audio (Channels * BytesPerSample).
+		int &SampleRate,			// Sample rate.
+		int &Float,					// True or false. Changed to Float from mFormat.
+		int &ByteOrder,				// Endianness.
+		int &dataOffset,			// File offset of sample data
+		unsigned long &dataSize,	// Size of sample data in bytes
+		int &HasBWF,				// 0 for no BWF and 1 for has BWF
+		int &MediaType,				// 1 = wav, 2 = aif;
+		SF_BROADCAST_INFO &bext
+	)
 	{
 		// Create a path object.
 		std::sys::path path(name);
@@ -74,9 +98,39 @@ namespace dsp
 			return false;
 		}
 
-		// Get number of channels for calling function...
-		channels = tmp.get_channels();
+		// Get data calling function...
 		dsp::dspformat fmt = tmp.get_dspformat();
+		Channels	=	tmp.get_channels();		// Total number of channels.
+		SampleSize	=	fmt.get_bits();			// Bits per sample.
+		FrameSize	=	((SampleSize + 7) / 8) * Channels; // Size of a single frame of audio (Channels * BytesPerSample).
+		SampleRate	=	tmp.get_samplerate();	// Sample rate.
+		Float		=	fmt.is_floats();		// Changed to Float from mFormat,// ???
+
+		ByteOrder = (tmp.get_format() & SF_FORMAT_ENDMASK) >> 28;		// Endianness.
+		switch (ByteOrder)
+		{
+		case 0:
+			if (tmp.command(SFC_RAW_DATA_NEEDS_ENDSWAP, 0, 0))
+				ByteOrder = (LITTLE_ENDIAN ? 1 : 0);
+			else
+				ByteOrder = (LITTLE_ENDIAN ? 0 : 1);
+
+			break;
+			// Files endianness
+		case 1:	ByteOrder = 0; break;	// Little-endian
+		case 2: ByteOrder = 1; break;	// Big-endian
+		case 3: ByteOrder = (LITTLE_ENDIAN ? 0 : 1); break;	// CPU endianness
+		}
+
+		//SF_BROADCAST_INFO bext;
+		HasBWF = tmp.command(SFC_GET_BROADCAST_INFO, &bext, sizeof(bext));	// 0 for no BWF and 1 for has BWF
+		MediaType = (tmp.get_format() & SF_FORMAT_TYPEMASK) >> 16;			// 1 = wav, 2 = aif;
+
+		//int &dataOffset,	// ???
+		dataOffset = dataSize = 0;
+		tmp.seek(0, SF_SEEK_SET);
+		dataOffset = (int)sfp_get_dataoffset(tmp.get_sndfile_ptr());
+		dataSize = (unsigned long)sfp_get_datalength(tmp.get_sndfile_ptr());//((unsigned int)tmp.get_frames() * FrameSize);
 
 		// If this is the first input we need to set the default output format.
 		if (input.size() == 0)
@@ -92,11 +146,36 @@ namespace dsp
 
 
 	// ********************************
+	// **** This function adds an input file and sets 'channels' to the
+	// **** number of channels detected in the input file.
+	bool dsp_split_combine::add_input(const char *name, int &Channels)
+	{
+		SF_BROADCAST_INFO bext;
+		int
+			//Channels,		// Total number of channels.
+			SampleSize,		// Bits per sample.
+			FrameSize,		// Size of a single frame of audio (Channels * BytesPerSample).
+			SampleRate,		// Sample rate.
+			Float,			// True or false.
+			ByteOrder,		// Endianness.
+			dataOffset,		// File offset of sample data
+			HasBWF,			// 0 for no BWF and 1 for has BWF
+			MediaType;		// 1 = wav, 2 = aif;
+		unsigned long dataSize;	// Size of sample data in bytes
+		return add_input_ex(name, Channels, SampleSize, FrameSize, SampleRate, Float, ByteOrder, dataOffset, dataSize, HasBWF, MediaType, bext);
+	}
+
+
+	// ********************************
 	// **** Add an output file name.
 	bool dsp_split_combine::add_output_path(std::sys::path &path, int fmtcodec, int rate) // By path
 	{
-		output.emplace_back(path);
-		// TODO: Handle fmtcodec
+		dsp::dspformat fmt;
+		// Handle fmtcodec
+		if (fmtcodec)
+			fmt = input[0].file.get_dspformat_from(fmtcodec, rate);
+		fmt.set_rate(rate);
+		output.emplace_back(path, fmt);
 		return true;
 	}
 	bool dsp_split_combine::add_output(const char *name, int fmtcodec, int rate) // By C string
@@ -120,35 +199,35 @@ namespace dsp
 
 	// ********************************
 	// **** A private template function used to run the actual split.
-	template <typename _Type>
+	template <typename _TypeSrc, typename _TypeDst>
 	void dsp_split_combine::split_template()
 	{
 		// Get number of frames to read each round.  And number of channels.
-		int frames = get_buffer_length<_Type>();
+		int frames = get_buffer_length<_TypeDst>();
 		int channels = input[0].format.get_channels();
 
 		// Main buffer.
-		dsp::dspvector<_Type> inbuffer(frames * channels);
-		dsp::dspvector<_Type> outbuffer(frames * channels);
-		std::vector<_Type *>  chptr(channels);
+		dsp::dspvector<_TypeSrc> inbuffer(frames * channels);
+		dsp::dspvector<_TypeDst> outbuffer(frames * channels);
+		std::vector<_TypeDst *>  chptr(channels);
 
 		// Setup some pointers to each channel in non-interleaved space.
 		for (int i = 0; i < channels; ++i)
-			chptr[i] = (_Type*)((unsigned char*)outbuffer.data() + (frames * i * sizeof(_Type)));
+			chptr[i] = (_TypeDst*)((unsigned char*)outbuffer.data() + (frames * i * sizeof(_TypeDst)));
 
 		// Setup transposition process.
 		dsp::transpose_to de_interleave(frames, channels, deinterleave);
 
 		// Main loop:
 		int rframes;
-		while ((rframes = (int)input[0].file.read_frames<_Type>((_Type*)inbuffer.data(), frames)) == frames) // Read input.
+		while ((rframes = (int)input[0].file.read_frames<_TypeSrc>((_TypeSrc*)inbuffer.data(), frames)) == frames) // Read input.
 		{
-			// Transpose.
+			// Transpose and convert type.
 			de_interleave(inbuffer, outbuffer);
 
 			// Write output.  FIXME: We should really log and report errors while writing.
 			for (int i = 0; i < channels; ++i)
-				output[i].file.write_frames<_Type>(chptr[i], rframes);
+				output[i].file.write_frames<_TypeDst>(chptr[i], rframes);
 		}
 
 		// Handle leftovers...
@@ -159,14 +238,14 @@ namespace dsp
 
 			// Write output.  FIXME: We should really log and report errors while writing.
 			for (int i = 0; i < channels; ++i)
-				output[i].file.write_frames<_Type>((_Type*)((unsigned char*)outbuffer.data() + (rframes * i * sizeof(_Type))), rframes);
+				output[i].file.write_frames<_TypeDst>((_TypeDst*)((unsigned char*)outbuffer.data() + (rframes * i * sizeof(_TypeDst))), rframes);
 		}
 	}
 
 
 	// ********************************
 	// **** Template for the combine process.
-	template <typename _Type>
+	template <typename _TypeSrc, typename _TypeDst>
 	void dsp_split_combine::combine_template()
 	{
 		// Get number of frames to read each round, number of channels etc...
@@ -174,7 +253,7 @@ namespace dsp
 		bool done = false;
 		int channels = 0;
 		int i, cur_c, rframes, maxframes = 0;
-		int frames = get_buffer_length<_Type>();
+		int frames = get_buffer_length<_TypeDst>();
 		int num_inputs = input.size();
 
 		// Calculate number of output channels and decide what method to use.
@@ -193,8 +272,8 @@ namespace dsp
 			dsp::transpose_to interleave(frames, channels, dsp::interleave);
 
 			// Create buffers.
-			std::vector<_Type> inbuffer(frames * num_inputs);
-			std::vector<_Type> outbuffer(frames * num_inputs);
+			dsp::dspvector<_TypeSrc> inbuffer(frames * num_inputs);
+			dsp::dspvector<_TypeDst> outbuffer(frames * num_inputs);
 
 			// Run loop.
 			while (!done)
@@ -205,12 +284,12 @@ namespace dsp
 				for (i = 0; i < num_inputs; ++i)
 				{
 					// Read in buffer.
-					if ((rframes = (int)input[i].file.read_frames<_Type>((_Type*)(inbuffer.data() + (frames * i)), frames)) == frames)
+					if ((rframes = (int)input[i].file.read_frames<_TypeSrc>((_TypeSrc*)(inbuffer.data() + (frames * i)), frames)) == frames)
 						done = false;
 
 					// Zero out end of buffer if necessary.
 					for (int x = rframes; x < frames; ++x)
-						inbuffer[(frames * i) + x] = dsp::sample_traits<_Type>::zero();
+						inbuffer[(frames * i) + x] = dsp::sample_traits<_TypeSrc>::zero();
 
 					// Set max frames.
 					if (rframes > maxframes)
@@ -224,7 +303,7 @@ namespace dsp
 					interleave(inbuffer, outbuffer);
 
 					// And write to output file.
-					output[0].file.write_frames<_Type>((_Type*)outbuffer.data(), maxframes);
+					output[0].file.write_frames<_TypeDst>((_TypeDst*)outbuffer.data(), maxframes);
 
 				} // if (maxframes)
 			} // while (!done)
@@ -233,8 +312,8 @@ namespace dsp
 		{
 			// Complex method is below and the simple method is above.
 			// Create input/mid buffers.
-			std::vector<std::vector<_Type>> inbuffers(num_inputs);
-			std::vector<std::vector<_Type>> midbuffers(num_inputs);
+			std::vector<dsp::dspvector<_TypeDst>> inbuffers(num_inputs);
+			std::vector<dsp::dspvector<_TypeDst>> midbuffers(num_inputs);
 
 			// Calculate number of output channels
 			for (i = 0; i < num_inputs; ++i)
@@ -245,8 +324,8 @@ namespace dsp
 			}
 
 			// Create output buffers.  We need two, one for building the deinterlaced.
-			std::vector<_Type> midoutbuffer(frames * channels);
-			std::vector<_Type> outbuffer(frames * channels);
+			dsp::dspvector<_TypeDst> midoutbuffer(frames * channels);
+			dsp::dspvector<_TypeDst> outbuffer(frames * channels);
 			dsp::transpose_to interleave(frames, channels, dsp::interleave);
 
 			// Setup some values.
@@ -264,7 +343,7 @@ namespace dsp
 					cur_channels = input[i].format.get_channels();
 
 					// Read in frames.
-					if ((rframes = (int)input[i].file.read_frames<_Type>((_Type*)inbuffers[i].data(), frames)) == frames)
+					if ((rframes = (int)input[i].file.read_frames<_TypeDst>((_TypeDst*)inbuffers[i].data(), frames)) == frames)
 						done = false;
 
 					// If we read any frames...
@@ -275,7 +354,7 @@ namespace dsp
 					{
 						// Zero out extra samples.
 						for (int x = rframes * cur_channels; x < frames * cur_channels; ++x)
-							inbuffers[i][x] = dsp::sample_traits<_Type>::zero();
+							inbuffers[i][x] = dsp::sample_traits<_TypeDst>::zero();
 
 						std::copy(inbuffers[i].cbegin(), inbuffers[i].cend(), midoutbuffer.begin() + (frames * cur_c));
 						++cur_c;
@@ -286,7 +365,7 @@ namespace dsp
 
 						// Zero out extra samples.
 						for (int x = rframes * cur_channels; x < frames * cur_channels; ++x)
-							inbuffers[i][x] = dsp::sample_traits<_Type>::zero();
+							inbuffers[i][x] = dsp::sample_traits<_TypeDst>::zero();
 
 						// De-interleave this files samples.
 						deinterleave(inbuffers[i], midbuffers[i]);
@@ -304,7 +383,7 @@ namespace dsp
 					interleave(midoutbuffer, outbuffer);
 
 					// And write to output file.
-					output[0].file.write_frames<_Type>((_Type*)outbuffer.data(), maxframes);
+					output[0].file.write_frames<_TypeDst>((_TypeDst*)outbuffer.data(), maxframes);
 
 				} // if (maxframes)
 			} // while (!done)
@@ -314,24 +393,31 @@ namespace dsp
 
 	// ********************************
 	// **** Convert template function
-	template <typename _Type>
+	template <typename _TypeSrc, typename _TypeDst>
 	void dsp_split_combine::convert_template(int index)
 	{
 		// Get number of frames to read each round.  And number of channels.
-		int frames = get_buffer_length<_Type>();
+		int frames = get_buffer_length<_TypeDst>();
 		int channels = input[index].format.get_channels();
 
 		// Main buffer.
-		std::vector<_Type> buffer(frames * channels);
+		dsp::dspvector<_TypeSrc> inbuffer(frames * channels);
+		dsp::dspvector<_TypeDst> outbuffer(frames * channels);
 
 		// Main loop:
 		int rframes;
-		while ((rframes = (int)input[index].file.read_frames<_Type>((_Type*)buffer.data(), frames)) == frames)
-			output[index].file.write_frames<_Type>((_Type*)buffer.data(), rframes);
+		while ((rframes = (int)input[index].file.read_frames<_TypeSrc>((_TypeSrc*)inbuffer.data(), frames)) == frames)
+		{
+			outbuffer = inbuffer;
+			output[index].file.write_frames<_TypeDst>((_TypeDst*)outbuffer.data(), rframes);
+		}
 
 		// Handle leftovers...
 		if (rframes > 0)
-			output[index].file.write_frames<_Type>((_Type*)buffer.data(), rframes);
+		{
+			outbuffer = inbuffer;
+			output[index].file.write_frames<_TypeDst>((_TypeDst*)outbuffer.data(), rframes);
+		}
 	}
 	// ********************************
 
@@ -409,6 +495,20 @@ namespace dsp
 		// Open output files.
 		for (unsigned int i = 0; i < output.size(); ++i)
 		{
+			if (output[i].format.get_rate() == 0)
+				output[i].format.set_rate(input[0].format.get_rate());
+
+			if (output[i].format.get_bits() == 0)
+			{
+				output[i].format.set_bits(input[0].format.get_bits());
+				output[i].format.set_float(input[0].format.is_floats());
+				output[i].format.set_interleaved(input[0].format.is_interleaved());
+			}
+
+			if (output[i].format.get_frames() == 0)
+				output[i].format.set_frames(input[0].format.get_frames());
+			output[i].format.set_channels(1);
+
 #if 0//_MSC_VER >= 1900
 			int oformat = output[i].file.get_good_sf_format(output[i].path.extension().string(), output[i].format);//, out_sf_format);
 #else
@@ -443,26 +543,75 @@ namespace dsp
 		switch ((input[0].format.get_bits() + 7) / 8)
 		{
 		case 1:
-			split_template<int8_t>();
+			if (!output[0].format.is_floats())
+				split_template<int8_t, int8_t>();
+			else
+			{
+				if (output[0].format.get_bits() <= 32)
+					split_template<int8_t, float>();
+				else
+					split_template<int8_t, double>();
+			}
 			break;
 		case 2:
-			split_template<int16_t>();
+			if (!output[0].format.is_floats())
+				split_template<int16_t, int16_t>();
+			else
+			{
+				if (output[0].format.get_bits() <= 32)
+					split_template<int16_t, float>();
+				else
+					split_template<int16_t, double>();
+			}
 			break;
 		case 3:
-			split_template<int32_t>();
+			if (!output[0].format.is_floats())
+				split_template<int32_t, int32_t>();
+			else
+			{
+				if (output[0].format.get_bits() <= 32)
+					split_template<int32_t, float>();
+				else
+					split_template<int32_t, double>();
+			}
 			break;
 		case 4:
 			if (!input[0].format.is_floats())
-				split_template<int32_t>();
+			{
+				if (!output[0].format.is_floats())
+					split_template<int32_t, int32_t>();
+				else
+				{
+					if (output[0].format.get_bits() <= 32)
+						split_template<int32_t, float>();
+					else
+						split_template<int32_t, double>();
+				}
+			}
 			else
-				split_template<float>();
+			{
+				if (output[0].format.get_bits() <= 32)
+					split_template<float, float>();
+				else
+					split_template<float, double>();
+			}
 			break;
 		case 8:
 		default:
 			if (!input[0].format.is_floats())
-				split_template<int64_t>();
+			{
+				if (!output[0].format.is_floats())
+					split_template<int64_t, int64_t>();
+				else
+				{
+					if (output[0].format.get_bits() <= 32)
+						split_template<int64_t, float>();
+					else
+						split_template<int64_t, double>();
+				}
+			}
 			else
-				split_template<double>();
+				split_template<double, double>();
 			break;
 		}
 
@@ -507,8 +656,24 @@ namespace dsp
 		}
 
 		// Open output files.
-		for (unsigned int i = 0; i < output.size(); ++i)
+//		for (unsigned int i = 0; i < output.size(); ++i)
+		unsigned int i = 0;
 		{
+			if (output[i].format.get_rate() == 0)
+				output[i].format.set_rate(input[0].format.get_rate());
+
+			if (output[i].format.get_bits() == 0)
+			{
+				output[i].format.set_bits(input[0].format.get_bits());
+				output[i].format.set_float(input[0].format.is_floats());
+				output[i].format.set_interleaved(input[0].format.is_interleaved());
+			}
+
+			if (output[i].format.get_frames() == 0)
+				output[i].format.set_frames(input[0].format.get_frames());
+
+			output[i].format.set_channels(channels);
+
 #if 0//_MSC_VER >= 1900
 			int oformat =
 				output[i].file.get_good_sf_format(output[i].path.extension().string(), output[i].format);//, out_sf_format);
@@ -558,26 +723,26 @@ namespace dsp
 		switch ((input[0].format.get_bits() + 7) / 8)
 		{
 		case 1:
-			combine_template<int8_t>();
+			combine_template<int8_t, int8_t>();
 			break;
 		case 2:
-			combine_template<int16_t>();
+			combine_template<int16_t, int16_t>();
 			break;
 		case 3:
-			combine_template<int32_t>();
+			combine_template<int32_t, int32_t>();
 			break;
 		case 4:
 			if (!input[0].format.is_floats())
-				combine_template<int32_t>();
+				combine_template<int32_t, int32_t>();
 			else
-				combine_template<float>();
+				combine_template<float, float>();
 			break;
 		case 8:
 		default:
 			if (!input[0].format.is_floats())
-				combine_template<int64_t>();
+				combine_template<int64_t, int64_t>();
 			else
-				combine_template<double>();
+				combine_template<double, double>();
 			break;
 		}
 
@@ -640,6 +805,9 @@ namespace dsp
 			// Setup the output format.
 			out_format = input[i].file.get_dspformat();
 			out_sf_format = input[i].file.get_format();
+
+			output[i].format.set_channels(input[i].format.get_channels());
+
 #if 0//_MSC_VER >= 1900
 			oformat =
 				output[i].file.get_good_sf_format(
@@ -676,26 +844,26 @@ namespace dsp
 			switch ((input[i].format.get_bits() + 7) / 8)
 			{
 			case 1:
-				convert_template<int8_t>(i);
+				convert_template<int8_t, int8_t>(i);
 				break;
 			case 2:
-				convert_template<int16_t>(i);
+				convert_template<int16_t, int16_t>(i);
 				break;
 			case 3:
-				convert_template<int32_t>(i);
+				convert_template<int32_t, int32_t>(i);
 				break;
 			case 4:
 				if (!input[i].format.is_floats())
-					convert_template<int32_t>(i);
+					convert_template<int32_t, int32_t>(i);
 				else
-					convert_template<float>(i);
+					convert_template<float, float>(i);
 				break;
 			case 8:
 			default:
 				if (!input[i].format.is_floats())
-					convert_template<int64_t>(i);
+					convert_template<int64_t, int64_t>(i);
 				else
-					convert_template<double>(i);
+					convert_template<double, double>(i);
 				break;
 			}
 		}

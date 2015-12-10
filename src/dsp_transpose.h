@@ -73,16 +73,28 @@ namespace dsp
 			this->operator()(A.data(), B.data());
 		}
 
-		template <size_t _SizeSrc, typename _TypeSrc, bool _NativeSrc>
-		inline void operator()(dsparray<_SizeSrc, _TypeSrc, _NativeSrc> & A, dsparray<_SizeSrc, _TypeSrc, _NativeSrc> & B)
+		template <size_t _SizeSrc, typename _TypeSrc, bool _NativeSrc, size_t _SizeDst, typename _TypeDst, bool _NativeDst>
+		inline void operator()(dsparray<_SizeSrc, _TypeSrc, _NativeSrc> & A, dsparray<_SizeDst, _TypeDst, _NativeDst> & B)
 		{
-			this->operator()((_TypeSrc*)A.data(), (_TypeSrc*)B.data());
+			for (int r = 0; r < rows; ++r)
+			{
+				for (int c = 0; c < cols; ++c)
+				{
+					B[c * rows + r] = A[r * cols + c];
+				}
+			}
 		}
 
-		template <typename _TypeSrc, bool _NativeSrc, class _AllocSrc>
-		inline void operator()(dspvector<_TypeSrc, _NativeSrc, _AllocSrc> & A, dspvector<_TypeSrc, _NativeSrc, _AllocSrc> & B)
+		template <typename _TypeSrc, bool _NativeSrc, class _AllocSrc, typename _TypeDst, bool _NativeDst, class _AllocDst>
+		inline void operator()(dspvector<_TypeSrc, _NativeSrc, _AllocSrc> & A, dspvector<_TypeDst, _NativeDst, _AllocDst> & B)
 		{
-			this->operator()((_TypeSrc*)A.data(), (_TypeSrc*)B.data());
+			for (int r = 0; r < rows; ++r)
+			{
+				for (int c = 0; c < cols; ++c)
+				{
+					B[c * rows + r] = A[r * cols + c];
+				}
+			}
 		}
 		// **** End process() functions
 		// ********************************

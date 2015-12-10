@@ -207,6 +207,9 @@ namespace dsp
 		~dspfile(void) {}
 		// ********************************
 
+		// ********************************
+		SNDFILE *get_sndfile_ptr() { return p->sf; }
+		// ********************************
 
 		// ********************************
 		// ********************************
@@ -397,6 +400,75 @@ namespace dsp
 
 
 		// ********************************
+		dsp::dspformat get_dspformat_from(int sf_fmt, int rate) const
+		{
+			dsp::dspformat ret;
+			if (rate)
+				ret.set_rate(rate);
+
+			switch (sf_fmt & SF_FORMAT_SUBMASK)
+			{
+			case SF_FORMAT_PCM_S8:		//0x0001,       /* Signed 8 bit data */
+			case SF_FORMAT_PCM_U8:		//0x0005,       /* Unsigned 8 bit data (WAV and RAW only) */
+			case SF_FORMAT_DPCM_8:		//0x0050,       /* 8 bit differential PCM (XI only) */
+				ret.set_bits(8);
+				ret.set_float(false);
+				break;
+
+			case SF_FORMAT_PCM_16:		//0x0002,       /* Signed 16 bit data */
+			case SF_FORMAT_DPCM_16:		//0x0051,       /* 16 bit differential PCM (XI only) */
+			case SF_FORMAT_DWVW_12:		//0x0040,       /* 12 bit Delta Width Variable Word encoding. */
+			case SF_FORMAT_DWVW_16:		//0x0041,       /* 16 bit Delta Width Variable Word encoding. */
+			case SF_FORMAT_ALAC_16:		//0x0070,		/* Apple Lossless Audio Codec (16 bit). */
+				ret.set_bits(16);
+				ret.set_float(false);
+				break;
+
+			case SF_FORMAT_PCM_24:		//0x0003,       /* Signed 24 bit data */
+			case SF_FORMAT_DWVW_24:		//0x0042,       /* 24 bit Delta Width Variable Word encoding. */
+			case SF_FORMAT_ALAC_20:		//0x0071,		/* Apple Lossless Audio Codec (20 bit). */
+			case SF_FORMAT_ALAC_24:		//0x0072,		/* Apple Lossless Audio Codec (24 bit). */
+				ret.set_bits(24);
+				ret.set_float(false);
+				break;
+
+			case SF_FORMAT_PCM_32:		//0x0004,       /* Signed 32 bit data */
+			case SF_FORMAT_ALAC_32:		//0x0073,		/* Apple Lossless Audio Codec (32 bit). */
+				ret.set_bits(32);
+				ret.set_float(false);
+				break;
+
+			case SF_FORMAT_FLOAT:		//0x0006,       /* 32 bit float data */
+				ret.set_bits(32);
+				ret.set_float(true);
+				break;
+
+			case SF_FORMAT_DOUBLE:		//0x0007,       /* 64 bit float data */
+			case SF_FORMAT_DWVW_N:		//0x0043,       /* N bit Delta Width Variable Word encoding. */
+				ret.set_bits(64);
+				ret.set_float(true);
+				break;
+
+			// ***TODO: Get more info on the folowing formats so we can convert them appropriately.
+			case SF_FORMAT_ULAW:		//0x0010,       /* U-Law encoded. */
+			case SF_FORMAT_ALAW:		//0x0011,       /* A-Law encoded. */
+			case SF_FORMAT_IMA_ADPCM:	//0x0012,       /* IMA ADPCM. */
+			case SF_FORMAT_MS_ADPCM:	//0x0013,       /* Microsoft ADPCM. */
+			case SF_FORMAT_GSM610:		//0x0020,       /* GSM 6.10 encoding. */
+			case SF_FORMAT_VOX_ADPCM:	//0x0021,       /* Oki Dialogic ADPCM encoding. */
+			case SF_FORMAT_G721_32:		//0x0030,       /* 32kbs G721 ADPCM encoding. */
+			case SF_FORMAT_G723_24:		//0x0031,       /* 24kbs G723 ADPCM encoding. */
+			case SF_FORMAT_G723_40:		//0x0032,       /* 40kbs G723 ADPCM encoding. */
+			case SF_FORMAT_VORBIS:		//0x0060,       /* Xiph Vorbis encoding. */
+			default:
+				ret.set_bits(32);
+				ret.set_float(true);
+				break;
+			} // switch ()
+
+			return ret;
+		}
+
 		dsp::dspformat get_dspformat() const
 		{
 			if (p != nullptr)

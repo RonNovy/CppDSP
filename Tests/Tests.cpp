@@ -31,12 +31,12 @@ public:
 
 // ********************************
 // **** Test file splitting
-int test_split(char * input, char * output)
+int test_split(char * input, char * output, int outfmt = 0)
 {
 	// ********************************
 	// **** Initialize stop watch and display splash.
 	stop_watch t;
-	std::cout << "Test for splitting process:\n" << std::hex;
+	std::cout << "Test for splitting process:\n";
 	// ********************************
 
 
@@ -46,7 +46,7 @@ int test_split(char * input, char * output)
 	std::cout << "Calling dsp_sc_start(handle)...";
 	if (dsp_sc_start(handle) == DSP_OK)
 	{
-		std::cout << "ok. handle = 0x" << handle << "\n";
+		std::cout << "ok. handle = 0x" << std::hex << handle << "\n";
 	}
 	else
 	{
@@ -59,12 +59,25 @@ int test_split(char * input, char * output)
 
 	// ********************************
 	// **** Add input file
-	int channels = 0;
 	char * name = input;
 	std::cout << "Calling dsp_sc_add_input(handle, \"" << name << "\", channels)...";
-	if (dsp_sc_add_input(handle, name, channels) == DSP_OK)
+	SF_BROADCAST_INFO bext;
+	int Channels, SampleSize, FrameSize, SampleRate, Float, ByteOrder, dataOffset, HasBWF, MediaType;
+	unsigned long dataSize;
+	if (dsp_sc_add_input_ex(handle, name, Channels, SampleSize, FrameSize, SampleRate, Float, ByteOrder, dataOffset, dataSize, HasBWF, MediaType, bext) == DSP_OK)
 	{
-		std::cout << "ok. handle = 0x" << handle << ", channels = " << channels << "\n";
+		std::cout << "ok. handle = 0x" << std::hex << handle
+			<< "," << std::dec << Channels
+			<< "," << std::dec << SampleSize
+			<< "," << std::dec << FrameSize
+			<< "," << std::dec << SampleRate
+			<< "," << (Float ? "Float": "Integer")
+			<< "," << (ByteOrder ? "Big": "Little")
+			<< "," << std::hex << dataOffset
+			<< "," << std::hex << dataSize
+			<< "," << (HasBWF ? "BWF" : "NoBWF")
+			<< "," << std::hex << MediaType
+			<< "\n";
 	}
 	else
 	{
@@ -79,26 +92,29 @@ int test_split(char * input, char * output)
 
 	// ********************************
 	// **** Add output files?
-	char outname[1024];
-	for (int i = 0; i < channels; ++i)
+	if (output != nullptr)
 	{
-		sprintf_s(
-			outname, sizeof(outname),
-			output,
-			i + 1
-		);
-		std::cout << "Calling dsp_sc_add_output(handle, \"" << outname << "\", channels)...";
-		if (dsp_sc_add_output(handle, outname, 0, 0) == DSP_OK)
+		char outname[1024];
+		for (int i = 0; i < Channels; ++i)
 		{
-			std::cout << "ok. handle = 0x" << handle << ", channel = " << i << "\n";
-		}
-		else
-		{
-			std::cout << "Error.  Couldn't add output file \"" << outname << "\"...\n";
-			char buf[2048];
-			dsp_sc_get_error(handle, buf, sizeof(buf));
-			std::cout << buf << "\n";
-			goto exit_early;
+			sprintf_s(
+				outname, sizeof(outname),
+				output,
+				i + 1
+			);
+			std::cout << "Calling dsp_sc_add_output(handle, \"" << outname << "\", channels)...";
+			if (dsp_sc_add_output(handle, outname, outfmt, 0) == DSP_OK)
+			{
+				std::cout << "ok. handle = 0x" << handle << ", channel = " << i << "\n";
+			}
+			else
+			{
+				std::cout << "Error.  Couldn't add output file \"" << outname << "\"...\n";
+				char buf[2048];
+				dsp_sc_get_error(handle, buf, sizeof(buf));
+				std::cout << buf << "\n";
+				goto exit_early;
+			}
 		}
 	}
 	// ********************************
@@ -186,14 +202,29 @@ int test_combine(char * input[8], char * output)
 
 	// ********************************
 	// **** Add input files
-	int numc = 0, count = 0;
+	//int numc = 0, 
+	int count = 0;
+	SF_BROADCAST_INFO bext;
+	int Channels, SampleSize, FrameSize, SampleRate, Float, ByteOrder, dataOffset, HasBWF, MediaType;
+	unsigned long dataSize;
 	for (int i = 0; (i < 8) && (input[i] != nullptr); ++i)
 	{
 		std::cout << "Calling dsp_sc_add_input(handle, \"" << input[i] << "\", channels, num)...";
-		if (dsp_sc_add_input(handle, input[i], numc) == DSP_OK)
+		if (dsp_sc_add_input_ex(handle, input[i], Channels, SampleSize, FrameSize, SampleRate, Float, ByteOrder, dataOffset, dataSize, HasBWF, MediaType, bext) == DSP_OK)
 		{
-			count += numc;
-			std::cout << "ok. handle = 0x" << handle << ", channels[" << i << "] = " << numc << '\n';
+			count += Channels;
+			std::cout << "handle = 0x [" << i <<"]" << std::hex << handle
+				<< "," << std::dec << Channels
+				<< "," << std::dec << SampleSize
+				<< "," << std::dec << FrameSize
+				<< "," << std::dec << SampleRate
+				<< "," << (Float ? "Float" : "Integer")
+				<< "," << (ByteOrder ? "Big" : "Little")
+				<< "," << std::hex << dataOffset
+				<< "," << std::hex << dataSize
+				<< "," << (HasBWF ? "BWF" : "NoBWF")
+				<< "," << std::hex << MediaType
+				<< "\n";
 		}
 		else
 		{
@@ -308,14 +339,31 @@ int test_convert(char * inputs[4], char * outputs[4])
 
 	// ********************************
 	// **** Add input files
-	int numc = 0, count = 0;
+	//int numc = 0, 
+	int count = 0;
+	SF_BROADCAST_INFO bext;
+	int Channels, SampleSize, FrameSize, SampleRate, Float, ByteOrder, dataOffset, HasBWF, MediaType;
+	unsigned long dataSize;
 	for (int i = 0; (i < 4) && (inputs[i] != nullptr); ++i)
 	{
 		std::cout << "Calling dsp_sc_add_input(handle, \"" << inputs[i] << "\", channels, num)...";
-		if (dsp_sc_add_input(handle, inputs[i], numc) == DSP_OK)
+		if (dsp_sc_add_input_ex(handle, inputs[i], Channels, SampleSize, FrameSize, SampleRate, Float, ByteOrder, dataOffset, dataSize, HasBWF, MediaType, bext) == DSP_OK)
 		{
-			count += numc;
-			std::cout << "ok. handle = 0x" << handle << ", channels[" << i << "] = " << numc << '\n';
+			count += Channels;
+			std::cout
+				<< "ok. handle = 0x" << std::hex << handle
+				<< ",[" << i << "] "
+				<< "," << std::dec << Channels
+				<< "," << std::dec << SampleSize
+				<< "," << std::dec << FrameSize
+				<< "," << std::dec << SampleRate
+				<< "," << (Float ? "Float" : "Integer")
+				<< "," << (ByteOrder ? "Big" : "Little")
+				<< "," << std::hex << dataOffset
+				<< "," << std::hex << dataSize
+				<< "," << (HasBWF ? "BWF" : "NoBWF")
+				<< "," << std::hex << MediaType
+				<< "\n";
 		}
 		else
 		{
@@ -332,14 +380,12 @@ int test_convert(char * inputs[4], char * outputs[4])
 
 	// ********************************
 	// **** Add output file
-	count = numc = 0;
 	for (int i = 0; (i < 4) && (outputs[i] != nullptr); ++i)
 	{
 		std::cout << "Calling dsp_sc_add_output(handle, \"" << outputs[i] << "\", 0, 0)...";
 		if (dsp_sc_add_output(handle, outputs[i], 0, 0) == DSP_OK)
 		{
-			count += numc;
-			std::cout << "ok. handle = 0x" << handle << ", channels[" << i << "] = " << numc << '\n';
+			std::cout << "ok. handle = 0x" << handle << ", channels[" << i << "]\n";
 		}
 		else
 		{
@@ -410,26 +456,33 @@ exit_early:
 // **** Main
 int _tmain(int argc, _TCHAR* argv[])
 {
+	// Split test 0
+	if (!test_split(
+		"X:\\Projects\\test_data\\Media\\MSRT09.WAV",
+		"X:\\Projects\\test_data\\Media\\out\\MSRT09 (ch%d).WAV",
+		0x010000 + 0x0006))
+		return 1;
+
 	// Split test 1
 	if (!test_split(
 		"X:\\Projects\\test_data\\Media\\002143.wav",
-		"X:\\Projects\\test_data\\Media\\002143 (ch%d).aif"))
+		"X:\\Projects\\test_data\\Media\\out\\002143 (ch%d).aif"))
 		return 1;
 
 	// Split test 2
 	if (!test_split(
 		"X:\\Projects\\test_data\\Media\\26_489_T2_SR028009.WAV",
-		"X:\\Projects\\test_data\\Media\\26_489_T2_SR028009 (ch%d).aif"))
+		"X:\\Projects\\test_data\\Media\\out\\26_489_T2_SR028009 (ch%d).aif"))
 		return 1;
 
 	// Combine test 1
 	{
 		char * test_inputs[8] =
 		{
-			"X:\\Projects\\test_data\\Media\\002143 (ch1).aif",
-			"X:\\Projects\\test_data\\Media\\002143 (ch2).aif",
-			"X:\\Projects\\test_data\\Media\\002143 (ch3).aif",
-			"X:\\Projects\\test_data\\Media\\002143 (ch4).aif",
+			"X:\\Projects\\test_data\\Media\\out\\002143 (ch1).aif",
+			"X:\\Projects\\test_data\\Media\\out\\002143 (ch2).aif",
+			"X:\\Projects\\test_data\\Media\\out\\002143 (ch3).aif",
+			"X:\\Projects\\test_data\\Media\\out\\002143 (ch4).aif",
 			nullptr,
 			nullptr,
 			nullptr,
@@ -437,7 +490,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		};
 		if (!test_combine(
 			test_inputs,
-			"X:\\Projects\\test_data\\Media\\002143 out.WAV"))
+			"X:\\Projects\\test_data\\Media\\out\\002143.WAV"))
 			return 1;
 	}
 
@@ -445,9 +498,9 @@ int _tmain(int argc, _TCHAR* argv[])
 	{
 		char * test_inputs[8] =
 		{
-			"X:\\Projects\\test_data\\Media\\26_489_T2_SR028009 (ch1).aif",
-			"X:\\Projects\\test_data\\Media\\26_489_T2_SR028009 (ch2).aif",
-			"X:\\Projects\\test_data\\Media\\26_489_T2_SR028009 (ch3).aif",
+			"X:\\Projects\\test_data\\Media\\out\\26_489_T2_SR028009 (ch1).aif",
+			"X:\\Projects\\test_data\\Media\\out\\26_489_T2_SR028009 (ch2).aif",
+			"X:\\Projects\\test_data\\Media\\out\\26_489_T2_SR028009 (ch3).aif",
 			nullptr,
 			nullptr,
 			nullptr,
@@ -456,7 +509,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		};
 		if (!test_combine(
 			test_inputs,
-			"X:\\Projects\\test_data\\Media\\26_489_T2_SR028009 out.WAV"))
+			"X:\\Projects\\test_data\\Media\\out\\26_489_T2_SR028009 out.WAV"))
 			return 1;
 	}
 
@@ -471,10 +524,10 @@ int _tmain(int argc, _TCHAR* argv[])
 		};
 		char * test_outputs[4] =
 		{
-			"X:\\Projects\\test_data\\Media\\002143.caf",
-			"X:\\Projects\\test_data\\Media\\26_489_T2_SR028009.caf",
-			"X:\\Projects\\test_data\\Media\\0001f3.aif",
-			"X:\\Projects\\test_data\\Media\\mvi_1738x.aif",
+			"X:\\Projects\\test_data\\Media\\out\\002143.caf",
+			"X:\\Projects\\test_data\\Media\\out\\26_489_T2_SR028009.caf",
+			"X:\\Projects\\test_data\\Media\\out\\0001f3.aif",
+			"X:\\Projects\\test_data\\Media\\out\\mvi_1738x.aif",
 		};
 		test_convert(test_inputs, test_outputs);
 	}

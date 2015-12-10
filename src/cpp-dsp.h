@@ -7,11 +7,13 @@
 #define _CPPDSP_DLL_H_
 
 
-#define VBEXTERN
-//#define VBEXTERN extern "C"
+//#define VBEXTERN
+#define VBEXTERN extern "C"
 #define VBCALL __stdcall
 
 #ifdef CDSP_EXPORTS
+	#include "dsp_file.h"
+
 	#define STRINGIFY(x) #x
 	#define STRINGIFYEX(x) STRINGIFY(x)
 
@@ -31,7 +33,7 @@
 	#endif // ifndef EXPORT_ALIAS
 
 	#define CPP_DSP_API __declspec(dllexport)
-	//#define CPP_DSP_API_VB EXTERN_C CPP_DSP_API
+	#define CPP_DSP_API_VB VBEXTERN CPP_DSP_API
 	//#define CPP_DSP_API_VB VBCALL CPP_DSP_API
 
 #else
@@ -40,6 +42,28 @@
 	#define EXPORT_ALIAS
 	#define CPP_DSP_API __declspec(dllimport)
 	#define CPP_DSP_API_VB VBEXTERN CPP_DSP_API
+
+	/*	Struct used to retrieve broadcast (EBU) information from a file.
+	**	Strongly (!) based on EBU "bext" chunk format used in Broadcast WAVE.
+	*/
+	#define	SF_BROADCAST_INFO_VAR(coding_hist_size) \
+				struct \
+				{	char		description [256] ; \
+					char		originator [32] ; \
+					char		originator_reference [32] ; \
+					char		origination_date [10] ; \
+					char		origination_time [8] ; \
+					uint32_t	time_reference_low ; \
+					uint32_t	time_reference_high ; \
+					short		version ; \
+					char		umid [64] ; \
+					char		reserved [190] ; \
+					uint32_t	coding_history_size ; \
+					char		coding_history [coding_hist_size] ; \
+				}
+
+	/* SF_BROADCAST_INFO is the above struct with coding_history field of 256 bytes. */
+	typedef SF_BROADCAST_INFO_VAR (256) SF_BROADCAST_INFO ;
 
 #endif
 
@@ -79,6 +103,21 @@ public:
 	virtual int VBCALL start(DSPPTR &_this);
 	virtual int VBCALL end(DSPPTR &_this);
 	virtual int VBCALL clear(DSPPTR _this);
+	virtual int VBCALL add_input_ex(
+		DSPPTR _this,
+		const char *name,			// Path to and name of file.
+		int &Channels,				// Total number of channels.
+		int &SampleSize,			// Bits per sample.
+		int &FrameSize,				// Size of a single frame of audio (Channels * BytesPerSample).
+		int &SampleRate,			// Sample rate.
+		int &Float,					// True or false. Changed to Float from mFormat.
+		int &ByteOrder,				// Endianness.
+		int &dataOffset,			// File offset of sample data
+		unsigned long &dataSize,	// Size of sample data in bytes
+		int &HasBWF,				// 0 for no BWF and 1 for has BWF
+		int &MediaType,				// 1 = wav, 2 = aif;
+		SF_BROADCAST_INFO &bext
+	);
 	virtual int VBCALL add_input(DSPPTR _this, const char *name, int &channels);
 	virtual int VBCALL add_output(DSPPTR _this, const char *name, int fmtcodec, int rate);
 	virtual int VBCALL get_error(DSPPTR _this, char *buf, int size);
@@ -90,10 +129,25 @@ public:
 // ********************************
 
 
-#if 0//ndef CDSP_EXPORTS
+//#ifndef CDSP_EXPORTS
 	CPP_DSP_API_VB int VBCALL dsp_sc_start(DSPPTR &_this);
 	CPP_DSP_API_VB int VBCALL dsp_sc_end(DSPPTR &_this);
 	CPP_DSP_API_VB int VBCALL dsp_sc_clear(DSPPTR &_this);
+	CPP_DSP_API_VB int VBCALL dsp_sc_add_input_ex(
+		DSPPTR _this,
+		const char *name,			// Path to and name of file.
+		int &Channels,				// Total number of channels.
+		int &SampleSize,			// Bits per sample.
+		int &FrameSize,				// Size of a single frame of audio (Channels * BytesPerSample).
+		int &SampleRate,			// Sample rate.
+		int &Float,					// True or false. Changed to Float from mFormat.
+		int &ByteOrder,				// Endianness.
+		int &dataOffset,			// File offset of sample data
+		unsigned long &dataSize,	// Size of sample data in bytes
+		int &HasBWF,				// 0 for no BWF and 1 for has BWF
+		int &MediaType,				// 1 = wav, 2 = aif;
+		SF_BROADCAST_INFO &bext
+	);
 	CPP_DSP_API_VB int VBCALL dsp_sc_add_input(DSPPTR _this, const char *name, int &channels);
 	CPP_DSP_API_VB int VBCALL dsp_sc_add_output(DSPPTR _this, const char *name, int fmtcodec, int rate);
 	CPP_DSP_API_VB int VBCALL dsp_sc_get_error(DSPPTR _this, char *buf, int size);
@@ -101,8 +155,8 @@ public:
 	CPP_DSP_API_VB int VBCALL dsp_sc_do_combine(DSPPTR _this);
 	CPP_DSP_API_VB int VBCALL dsp_sc_do_convert(DSPPTR _this);
 
-#endif // if 0
-#ifndef CDSP_EXPORTS
+//#endif // if 0
+#if 0//ndef CDSP_EXPORTS
 	CPP_DSP_API dsp_sc_interface sc_interface;
 	#define dsp_sc_start		sc_interface.start
 	#define dsp_sc_end			sc_interface.end
