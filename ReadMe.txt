@@ -1,6 +1,6 @@
 CppDSP Template Library
 
-This library is in early alpha and is usable as it is now.  However, there are a number of huge changes that are planned for the future that will make the current code incompatible with future versions.
+This library is in early alpha (more like a collection of ideas) and is usable in some ways as it is now.  However, there are a number of huge changes that are planned for the future that will make the current code incompatible with future versions.
 
 This is a C++ template library for doing very basic DSP operations on arrays or vectors of data.  It allows you to do basic operations like addition, subtraction, multiplication and division on two arrays or vectors as if they were fundamental types like int or float.
 
