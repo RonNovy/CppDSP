@@ -1,4 +1,6 @@
-CppDSP Template Library
+CppDSP Template Library - deprecated
+
+Note: This library is currently broken and will probably be erased from existance as a new one will eventually take its place.
 
 This library is in early alpha (more like a collection of ideas) and is usable in some ways as it is now.  However, there are a number of huge changes that are planned for the future that will make the current code incompatible with future versions.
 
