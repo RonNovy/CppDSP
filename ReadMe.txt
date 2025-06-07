@@ -11,7 +11,3 @@ Example:
 	dsp::dspvector<float>	a(8);	// Creates a vector of 8 floats.
 	dsp::dsparray<8, float>	b;	// creates an array of 8 floats.
 	a *= b;				// Multiplies vector a times array b and places the result in a.
-
-There is no documentation for this at all but a small presentation was created using Google Docs that is available on request...
-
-Ron (dot) Novy (at) Yahoo (dot) com
